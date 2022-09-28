@@ -23,12 +23,8 @@ def noise_removal(audio, sample_rate = 16000):
 
     S_filter = np.minimum(S_full, S_filter)
 
-    margin_i, margin_v = 2, 10
+    _ , margin_v = 2, 1
     power = 2
-
-    mask_i = librosa.util.softmask(S_filter,
-                                   margin_i * (S_full - S_filter),
-                                   power=power)
 
     mask_v = librosa.util.softmask(S_full - S_filter,
                                    margin_v * S_filter,
