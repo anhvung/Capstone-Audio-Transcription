@@ -15,27 +15,29 @@ def normalize_audio(audio):
 def noise_removal(audio, sample_rate = 16000):
     # bckgrnd noise removal https://librosa.org/librosa_gallery/auto_examples/plot_vocal_separation.html for more details
     print('removing noise')
-    S_filter = librosa.decompose.nn_filter(audio,
+    S_full, phase = librosa.magphase(librosa.stft(audio))
+    S_filter = librosa.decompose.nn_filter(S_full,
                                            aggregate=np.median,
                                            metric='cosine',
                                            width=int(librosa.time_to_frames(2, sr=sample_rate)))
 
-    S_filter = np.minimum(audio, S_filter)
+    S_filter = np.minimum(S_full, S_filter)
 
     margin_i, margin_v = 2, 10
     power = 2
 
     mask_i = librosa.util.softmask(S_filter,
-                                   margin_i * (audio - S_filter),
+                                   margin_i * (S_full - S_filter),
                                    power=power)
 
-    mask_v = librosa.util.softmask(audio - S_filter,
+    mask_v = librosa.util.softmask(S_full - S_filter,
                                    margin_v * S_filter,
                                    power=power)
 
-    S_foreground = mask_v * audio
+    S_foreground = mask_v * S_full
+    y_foreground = librosa.istft(S_foreground * phase)
     #S_background = mask_i * audio
-    return S_foreground
+    return y_foreground
     
 def listen(audio, sampling_rate = 16000):
     display(Audio_display(audio, rate=sampling_rate, autoplay=False))
