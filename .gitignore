@@ -2,4 +2,4 @@ base model exploration/data
 base model exploration/test.tar.gz
 .ipynb_checkpoints
 .DS_Store
-w2v2_lr_clean_test/datasets
+baselines_lr_clean_test/datasets
