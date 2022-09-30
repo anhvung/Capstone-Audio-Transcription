@@ -1,4 +1,4 @@
-from datasets import load_dataset
+from datasets import load_dataset, load_from_disk
 from jiwer import wer
 import librosa
 import nltk
@@ -42,7 +42,7 @@ def map_to_ground_truth(batch):
     f = open(transcription_file_path, 'r')
     lines= str.splitlines(f.read())
     txt=lines[int(batch['audio']['path'][-7:-5])].split(' ', 1)[1]
-    batch['txt'] = txt
+    batch['ground_truth'] = txt
     return batch
 
 def load_wav2vec_model(hf_path: str):
@@ -65,5 +65,7 @@ def map_to_pred(batch, model, tokenizer):
     predicted_ids = torch.argmax(logits, dim=-1)
     #get the words from the predicted word ids
     transcription = tokenizer.decode(predicted_ids[0])
+    #save logits and transcription
+    batch["logits"] = logits.cpu().detach().numpy()
     batch["transcription"] = transcription
     return batch
