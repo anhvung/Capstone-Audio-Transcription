@@ -1,5 +1,4 @@
-base model exploration/data
-base model exploration/test.tar.gz
 .ipynb_checkpoints
+__pycache__/
 .DS_Store
-baselines_lr_clean_test/datasets
+datasets
