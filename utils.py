@@ -12,8 +12,10 @@ nltk.download('punkt')
 
 # set paths
 datasets_path = os.path.join(os.getcwd(), 'datasets') 
+predictions_path = os.path.join(os.getcwd(), 'predictions')
 # create folders if they do not already exist
 if not os.path.exists(datasets_path): os.makedirs(datasets_path)
+if not os.path.exists(predictions_path): os.makedirs(predictions_path)
 # set device
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
