@@ -50,3 +50,18 @@ def load_wav2vec_model(hf_path: str):
     tokenizer = Wav2Vec2Tokenizer.from_pretrained(hf_path)
     model = Wav2Vec2ForCTC.from_pretrained(hf_path).to(device)
     return tokenizer, model
+
+def map_to_pred(batch, model, tokenizer):
+    """
+    predicts transcription
+    """
+    #tokenize
+    input_values = tokenizer(batch["audio"]["array"], return_tensors="pt").input_values
+    #take logits
+    logits = model(input_values.to(device)).logits
+    #take argmax (find most probable word id)
+    predicted_ids = torch.argmax(logits, dim=-1)
+    #get the words from the predicted word ids
+    transcription = tokenizer.decode(predicted_ids[0])
+    batch["transcription"] = transcription
+    return batch
