@@ -13,7 +13,7 @@
 **setup jupyter for remote access if not setup already (for new env):**
 https://ecbme4040.github.io/2022_fall/EnvSetup/gcp.html
 
-**Screen commands**
+**Run in background with screen commands**
 Video guide https://drive.google.com/file/d/1SS823dc7DCoNTXItxpVs0U4xB_eE0cTc/view?usp=sharing
 - create new screen: ``` screen ```
 - list screens: ```screen -ls```
@@ -30,6 +30,17 @@ https://cloud.google.com/storage/docs/uploading-objects
 
 **create folder:** in ui, under the cloud storage tab -> butcket -> capstone_datasets
 
-**donwnload from url directly to a bucket (compressed files cannot be unzipped within a bucket, they need to be downloaded to a vm, then uploaded again)**: ```curl URL | gsutil cp - gs://YOUR_BUCKET_NAME/FILENAME.EXTENSION```
+**download from url directly to a bucket (compressed files cannot be unzipped within a bucket, they need to be downloaded to a vm, then uploaded again)**: ```curl URL | gsutil cp - gs://YOUR_BUCKET_NAME/FILENAME.EXTENSION```
 **eg:** ```curl https://www.openslr.org/resources/12/test-clean.tar.gz | gsutil cp - gs://capstone_datasets/librispeech/test/test.tar.gz```
+
+## Drivers
+
+- First reset the VM the first time it boots.
+- Run  ```sudo dpkg --configure -a ```
+
+ - Download script ```curl https://raw.githubusercontent.com/GoogleCloudPlatform/compute-gpu-installation/main/linux/install_gpu_driver.py --output install_gpu_driver.py ```
+
+ - Run script ```sudo python3 install_gpu_driver.py ```
+ 
+ (source: https://cloud.google.com/compute/docs/gpus/install-drivers-gpu)
 
