@@ -1,14 +1,12 @@
 from datasets import load_dataset, load_from_disk
 from jiwer import wer
 import librosa
-import nltk
 import os
 import tarfile
 import torch
 import urllib.request
 import soundfile as sf
 from transformers import Wav2Vec2ForCTC, Wav2Vec2Tokenizer
-nltk.download('punkt')
 
 # set paths
 datasets_path = os.path.join(os.getcwd(), 'datasets') 
