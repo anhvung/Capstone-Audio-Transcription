@@ -1,0 +1,20 @@
+GCP Buckets cheat sheet
+
+https://cloud.google.com/storage/docs/uploading-objects
+
+upload file to a bucket: gcloud storage cp OBJECT_LOCATION gs://DESTINATION_BUCKET_NAME/FILEPATH.EXT
+
+upload folder: gcloud storage cp -r OBJECT_LOCATION gs://DESTINATION_BUCKET_NAME/FOLDERPATH
+
+create folder: in ui, under the cloud storage tab -> butcket -> capstone_datasets
+
+donwnload from url directly to a bucket: curl URL | gsutil cp - gs://YOUR_BUCKET_NAME/FILENAME.EXTENSION
+eg: curl https://www.openslr.org/resources/12/test-clean.tar.gz | gsutil cp - gs://capstone_datasets/librispeech/test/test.tar.gz
+
+
+setup jupyter for remote access if not setup already: 
+https://ecbme4040.github.io/2022_fall/EnvSetup/gcp.html
+
+
+extract with progress bar
+pv nsynth-train.jsonwav.tar.gz | tar -xz
