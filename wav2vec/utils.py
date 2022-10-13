@@ -67,3 +67,24 @@ def map_to_pred(batch, model, tokenizer):
     batch["logits"] = logits.cpu().detach().numpy()
     batch["transcription"] = transcription
     return batch
+
+def down_sample(s, sample_rate=16000, output_sr=8000):
+    # s: audio input (mono)
+    # sample rate: sample rate of s
+    # output_sr: output sample rate
+
+    # resample to output_sr
+    resampled_s = librosa.resample(s, orig_sr=sample_rate, target_sr=output_sr)
+
+    # then re-resample to 16000
+    noisy_s = librosa.resample(resampled_s, orig_sr=output_sr, target_sr=16000)
+    
+    # output should be at 16kHz sample rate
+    return noisy_s
+
+def map_to_downsampled(batch, input_sr=16000, output_sr=8000):
+    """
+    map to downsampled audio array
+    """
+    batch['audio']['array'] = down_sample(batch['audio']['array'], input_sr, output_sr)
+    return batch
