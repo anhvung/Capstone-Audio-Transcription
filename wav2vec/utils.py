@@ -5,7 +5,6 @@ import os
 import tarfile
 import torch
 import urllib.request
-import soundfile as sf
 from transformers import Wav2Vec2ForCTC, Wav2Vec2Tokenizer
 
 # set paths
@@ -87,4 +86,5 @@ def map_to_downsampled(batch, input_sr=16000, output_sr=8000):
     map to downsampled audio array
     """
     batch['audio']['array'] = down_sample(batch['audio']['array'], input_sr, output_sr)
+    batch['audio']['sampling_rate'] = output_sr
     return batch
