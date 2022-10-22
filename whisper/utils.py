@@ -69,7 +69,7 @@ def map_to_pred(batch, model, processor):
     input_features = processor(batch["audio"]["array"], sampling_rate=sampling_rate, return_tensors="pt").input_features
     # Generate logits and decode directly
     generated_ids = model.generate(inputs=input_features.to("cuda"))
-    transcription = processor.batch_decode(generated_ids, skip_special_tokens=True, normalized=True)
+    transcription = processor.batch_decode(generated_ids, skip_special_tokens=True)
     # save logits and transcription
     batch["logits"] = generated_ids.cpu().detach().numpy()
     batch["transcription"] = normalizer(transcription[0])
