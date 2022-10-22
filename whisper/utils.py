@@ -9,6 +9,8 @@ import tarfile
 import torch
 import urllib.request
 from transformers import WhisperProcessor, WhisperForConditionalGeneration
+from whisper.normalizers import EnglishTextNormalizer
+normalizer = EnglishTextNormalizer()
 
 # set device
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -70,7 +72,7 @@ def map_to_pred(batch, model, processor):
     transcription = processor.batch_decode(generated_ids, skip_special_tokens=True, normalized=True)
     # save logits and transcription
     batch["logits"] = generated_ids.cpu().detach().numpy()
-    batch["transcription"] = transcription
+    batch["transcription"] = normalizer(transcription[0])
     # normalize ground truth text
     batch['ground_truth'] = processor.tokenizer._normalize(batch['ground_truth'])
     return batch
@@ -162,3 +164,6 @@ def map_to_noisy(batch, sample_rate=16000, noise_percentage_factor=.01, noise_ty
     batch['audio']['array'] = add_noise(batch['audio']['array'], sample_rate=sample_rate,
                                         noise_percentage_factor=noise_percentage_factor, noise_type=noise_type)
     return batch
+
+def format_wer(text, transcription, decimal=1):
+  return round(100 * wer(text, transcription), decimal)
