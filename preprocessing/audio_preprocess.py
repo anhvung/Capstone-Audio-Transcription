@@ -68,7 +68,7 @@ def add_signals(s, back_s, sample_rate=16000, back_sample_rate=16000, noise_db=-
     return noisy_s
 
 
-def down_sample(s, ç=16000, output_sr=8000):
+def down_sample(s, input_sr=16000, output_sr=8000):
     # s: audio input (mono)
     # input_sr: sample rate of s
     # output_sr: output sample rate
