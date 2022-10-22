@@ -12,7 +12,13 @@ from transformers import WhisperProcessor, WhisperForConditionalGeneration
 
 # set device
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-
+# set paths for input/output
+root = os.getcwd()
+datasets_path = os.path.join(root, 'datasets')
+predictions_path = os.path.join(root, 'predictions')
+# create folders if they do not already exist
+if not os.path.exists(datasets_path): os.makedirs(datasets_path)
+if not os.path.exists(predictions_path): os.makedirs(predictions_path)
 
 # now useless as we download directly from bucket, keeping it here for now
 def download_and_extract_dataset_from_url(url: str, datasets_path: str = datasets_path):
@@ -47,7 +53,7 @@ def load_whisper(path: str):
     load and return wav2vec tokenizer and model from huggingface
     """
     processor = WhisperProcessor.from_pretrained(path)
-    model = WhisperForConditionalGeneration.from_pretrained(path)
+    model = WhisperForConditionalGeneration.from_pretrained(path).to("cuda")
 
     return processor, model
 
@@ -57,18 +63,16 @@ def map_to_pred(batch, model, processor):
     predicts transcription
     """
     # read soundfiles
-    input_features = processor(batch["audio"]["array"], return_tensors="pt").input_features
-    # Generate logits
-    with torch.no_grad():
-        logits = model(input_features.to("cuda")).logits
-    # take argmax and decode
-    predicted_ids = torch.argmax(logits, dim=-1)
-    transcription = processor.batch_decode(predicted_ids, normalize=True)
+    sampling_rate = batch.features["audio"].sampling_rate
+    input_features = processor(batch["audio"]["array"], sampling_rate=sampling_rate, return_tensors="pt").input_features
+    # Generate logits and decode directly
+    generated_ids = model.generate(inputs=input_features.to("cuda"))
+    transcription = processor.batch_decode(generated_ids, skip_special_tokens=True, normalized=True)
     # save logits and transcription
-    batch["logits"] = logits.cpu().detach().numpy()
+    batch["logits"] = generated_ids.cpu().detach().numpy()
     batch["transcription"] = transcription
     # normalize ground truth text
-    batch['groundtruth'] = processor.tokenizer._normalize(batch['groundtruth'])
+    batch['ground_truth'] = processor.tokenizer._normalize(batch['ground_truth'])
     return batch
 
 
