@@ -1,2 +1,6 @@
 
 .DS_Store
+
+.idea/
+
+whisper/__pycache__/
