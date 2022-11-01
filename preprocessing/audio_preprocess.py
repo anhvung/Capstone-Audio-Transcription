@@ -68,13 +68,13 @@ def add_signals(s, back_s, sample_rate=16000, back_sample_rate=16000, noise_db=-
     return noisy_s
 
 
-def down_sample(s, sample_rate=16000, output_sr=8000):
+def down_sample(s, input_sr=16000, output_sr=8000):
     # s: audio input (mono)
-    # sample rate: sample rate of s
+    # input_sr: sample rate of s
     # output_sr: output sample rate
 
     # resample to output_sr
-    resampled_s = librosa.resample(s, orig_sr=sample_rate, target_sr=output_sr)
+    resampled_s = librosa.resample(s, orig_sr=input_sr, target_sr=output_sr)
 
     # then re-resample to 16000
     noisy_s = librosa.resample(resampled_s, orig_sr=output_sr, target_sr=16000)
