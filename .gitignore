@@ -1,5 +1,8 @@
+.idea/
+whisper/__pycache__/
 .ipynb_checkpoints
 __pycache__/
 .DS_Store
 **/datasets
 **/predictions
+/whisper/.ipynb_checkpoints/
