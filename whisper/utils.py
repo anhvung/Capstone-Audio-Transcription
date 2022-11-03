@@ -2,17 +2,26 @@ import colorednoise as cn
 from datasets import load_dataset, load_from_disk
 from jiwer import wer
 import librosa
-import soundfile as sf
+from multiprocessing import set_start_method, cpu_count
 import numpy as np
 import os
 import tarfile
 import torch
+import torchaudio
 import urllib.request
 from transformers import WhisperProcessor, WhisperForConditionalGeneration
+import whisper
+from whisper.normalizers import EnglishTextNormalizer
+normalizer = EnglishTextNormalizer()
 
+# set paths
+datasets_path = os.path.join(os.getcwd(), 'datasets') 
+predictions_path = os.path.join(os.getcwd(), 'predictions')
+# create folders if they do not already exist
+if not os.path.exists(datasets_path): os.makedirs(datasets_path)
+if not os.path.exists(predictions_path): os.makedirs(predictions_path)
 # set device
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-
 
 # now useless as we download directly from bucket, keeping it here for now
 def download_and_extract_dataset_from_url(url: str, datasets_path: str = datasets_path):
@@ -47,7 +56,7 @@ def load_whisper(path: str):
     load and return wav2vec tokenizer and model from huggingface
     """
     processor = WhisperProcessor.from_pretrained(path)
-    model = WhisperForConditionalGeneration.from_pretrained(path)
+    model = WhisperForConditionalGeneration.from_pretrained(path).to(device)
 
     return processor, model
 
@@ -57,18 +66,15 @@ def map_to_pred(batch, model, processor):
     predicts transcription
     """
     # read soundfiles
-    input_features = processor(batch["audio"]["array"], return_tensors="pt").input_features
-    # Generate logits
-    with torch.no_grad():
-        logits = model(input_features.to("cuda")).logits
-    # take argmax and decode
-    predicted_ids = torch.argmax(logits, dim=-1)
-    transcription = processor.batch_decode(predicted_ids, normalize=True)
+    input_features = processor(batch["audio"]["array"], sampling_rate=16000, return_tensors="pt").input_features
+    # Generate logits and decode directly
+    generated_ids = model.generate(inputs=input_features.to(device))
+    transcription = processor.batch_decode(generated_ids, skip_special_tokens=True)
     # save logits and transcription
-    batch["logits"] = logits.cpu().detach().numpy()
-    batch["transcription"] = transcription
+    batch["logits"] = generated_ids.cpu().detach().numpy()
+    batch["transcription"] = normalizer(transcription[0])
     # normalize ground truth text
-    batch['groundtruth'] = processor.tokenizer._normalize(batch['groundtruth'])
+    batch['ground_truth'] = processor.tokenizer._normalize(batch['ground_truth'])
     return batch
 
 
@@ -158,3 +164,6 @@ def map_to_noisy(batch, sample_rate=16000, noise_percentage_factor=.01, noise_ty
     batch['audio']['array'] = add_noise(batch['audio']['array'], sample_rate=sample_rate,
                                         noise_percentage_factor=noise_percentage_factor, noise_type=noise_type)
     return batch
+
+def format_wer(text, transcription, decimal=1):
+    return round(100 * wer(text, transcription), decimal)
