@@ -8,6 +8,8 @@ import os
 import tarfile
 import torch
 import urllib.request
+import unicodedata
+import re
 from transformers import WhisperProcessor, WhisperForConditionalGeneration
 from whisper.normalizers import EnglishTextNormalizer
 normalizer = EnglishTextNormalizer()
@@ -67,7 +69,7 @@ def map_to_pred(batch, model, processor):
     # read soundfiles
     sampling_rate = batch.features["audio"].sampling_rate
     input_features = processor(batch["audio"]["array"], sampling_rate=sampling_rate, return_tensors="pt").input_features
-    # Generate logits and decode directly
+    # generate logits and decode directly
     generated_ids = model.generate(inputs=input_features.to("cuda"))
     transcription = processor.batch_decode(generated_ids, skip_special_tokens=True)
     # save logits and transcription
@@ -77,6 +79,50 @@ def map_to_pred(batch, model, processor):
     batch['ground_truth'] = processor.tokenizer._normalize(batch['ground_truth'])
     return batch
 
+
+def map_to_pred_ml(batch, model, processor, lang):
+    """
+    TEMP, MODIFIED map_to_pred for multilingual input to whisper
+    predicts transcription
+    """
+    # read soundfiles
+    sampling_rate = batch.features["audio"].sampling_rate
+    input_features = processor(batch["audio"]["array"], sampling_rate=sampling_rate, return_tensors="pt").input_features
+    # specify language of audio sample_rate
+    model.config.forced_decoder_ids = processor.get_decoder_prompt_ids(language = lang, task = "transcribe")
+    # generate logits and decode directly
+    generated_ids = model.generate(inputs=input_features.to("cuda"))
+    transcription = processor.batch_decode(generated_ids, skip_special_tokens=True, normalize=True) # keep built-in normalizer in-case
+    # save logits and transcription
+    batch["logits"] = generated_ids.cpu().detach().numpy()
+    batch["transcription"] = custom_normalizer(transcription[0], lang)
+    # normalize ground truth text
+    batch['ground_truth'] = processor.tokenizer._normalize(unicodedata.normalize("NFKC", batch['ground_truth']))
+    return batch
+
+def custom_normalizer(text, lang):
+    """
+    normalizing procedures based on appendix C, Whisper OpenAI paper
+    language tokens based on https://github.com/openai/whisper/blob/main/whisper/tokenizer.py
+    """
+    if lang == 'en':
+        return normalizer(text)
+    else:
+        text = re.sub("[\(\[].*?[\)\]]", "", text) # removes [] and () as well as content in-between -- will not work for non-standard brackets, eg: <> or （）, etc
+        text = unicodedata.normalize("NFKC", text)
+        ch_text = []
+        for ch in text:
+            if unicodedata.category(ch)[0] not in ('M', 'P', 'S'):
+                ch_text.append(ch)
+            else:
+                ch_text.append(' ')
+        text = ''.join(ch_text)
+        text = text.lower()
+    # set up for character error rate for languages w/o spaces between words
+    if lang in ('zh', 'ja', 'th', 'lo', 'my'):
+        text = ' '.join(text)
+        text = re.sub('(?<=\d) (?=\d)', '', text)
+    return re.sub(' +', ' ', text)
 
 def down_sample(s, sample_rate=16000, output_sr=8000):
     # s: audio input (mono)
