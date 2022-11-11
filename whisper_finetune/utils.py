@@ -42,7 +42,7 @@ def prepare_dataset(batch, feature_extractor, tokenizer):
     batch["input_features"] = feature_extractor(audio["array"], sampling_rate=audio["sampling_rate"]).input_features[0]
 
     # encode target text to label ids
-    batch["labels"] = tokenizer(batch["transcription"]).input_ids # make sure to encode the transcription column as ground truth
+    batch["labels"] = tokenizer(batch["raw_transcription"]).input_ids # make sure to encode the raw_transcription column as ground truth
     return batch
 
 # normalizer
