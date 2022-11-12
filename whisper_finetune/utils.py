@@ -44,7 +44,7 @@ def prepare_dataset(batch, feature_extractor, tokenizer):
 
     # encode target text to label ids
     batch["labels"] = tokenizer(batch["raw_transcription"]).input_ids # make sure to encode the raw_transcription column as ground truth
-    
+
     # save normalized transcription for reference
     batch["transcription"] = batch["transcription"]
     return batch
@@ -80,7 +80,8 @@ def custom_normalizer(text, lang):
         normalizer = EnglishTextNormalizer()
         return normalizer(text)
     else:
-        text = re.sub("[\(\[].*?[\)\]]", "", text) # removes [] and () as well as content in-between -- will not work for non-standard brackets, eg: <> or （）, etc
+        # removes [] and () as well as content in-between -- will not work for non-standard brackets, eg: <> or （）, etc
+        text = re.sub("[\(\[].*?[\)\]]", "", text)
         text = unicodedata.normalize("NFKC", text)
         ch_text = []
         for ch in text:
@@ -93,5 +94,6 @@ def custom_normalizer(text, lang):
     # set up for character error rate for languages w/o spaces between words
     if lang in ('zh', 'ja', 'th', 'lo', 'my'):
         text = ' '.join(text)
+        # remove spaces between consecutive numbers
         text = re.sub('(?<=\d) (?=\d)', '', text)
     return re.sub(' +', ' ', text)
