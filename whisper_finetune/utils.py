@@ -2,8 +2,9 @@ import torch
 from dataclasses import dataclass
 from typing import Any, Dict, List, Union
 import sys
-sys.path.insert(0, '/home/sivan/asr/whisper')
-from utils import custom_normalizer
+import unicodedata
+import re
+from whisper.normalizers import EnglishTextNormalizer
 
 # data collator
 @dataclass
@@ -43,6 +44,9 @@ def prepare_dataset(batch, feature_extractor, tokenizer):
 
     # encode target text to label ids
     batch["labels"] = tokenizer(batch["raw_transcription"]).input_ids # make sure to encode the raw_transcription column as ground truth
+    
+    # save normalized transcription for reference
+    batch["transcription"] = batch["transcription"]
     return batch
 
 # normalizer
@@ -65,3 +69,29 @@ def compute_metrics(pred, tokenizer):
     wer = 100 * metric.compute(predictions=pred_str, references=label_str)
     print(pred_str[:5], label_str[0:5])
     return {"wer": wer}
+
+
+def custom_normalizer(text, lang):
+    """
+    normalizing procedures based on appendix C, Whisper OpenAI paper
+    language tokens based on https://github.com/openai/whisper/blob/main/whisper/tokenizer.py
+    """
+    if lang == 'en':
+        normalizer = EnglishTextNormalizer()
+        return normalizer(text)
+    else:
+        text = re.sub("[\(\[].*?[\)\]]", "", text) # removes [] and () as well as content in-between -- will not work for non-standard brackets, eg: <> or （）, etc
+        text = unicodedata.normalize("NFKC", text)
+        ch_text = []
+        for ch in text:
+            if unicodedata.category(ch)[0] not in ('M', 'P', 'S'):
+                ch_text.append(ch)
+            else:
+                ch_text.append(' ')
+        text = ''.join(ch_text)
+        text = text.lower()
+    # set up for character error rate for languages w/o spaces between words
+    if lang in ('zh', 'ja', 'th', 'lo', 'my'):
+        text = ' '.join(text)
+        text = re.sub('(?<=\d) (?=\d)', '', text)
+    return re.sub(' +', ' ', text)
