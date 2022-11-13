@@ -1,10 +1,16 @@
-import torch
-from dataclasses import dataclass
-from typing import Any, Dict, List, Union
 import sys
 import unicodedata
 import re
+from typing import Any, Dict, List, Union
+
+import torch
+import evaluate
+from dataclasses import dataclass
+from transformers import WhisperProcessor
 from whisper.normalizers import EnglishTextNormalizer
+from transformers import WhisperForConditionalGeneration
+
+metric = evaluate.load("wer")
 
 # data collator
 @dataclass
@@ -34,6 +40,18 @@ class DataCollatorSpeechSeq2SeqWithPadding:
 
         return batch
 
+
+# Model loader
+def load_whisper(path: str, lang: str):
+    """
+    load and return wav2vec tokenizer and model from huggingface
+    """
+    processor = WhisperProcessor.from_pretrained(path, language=lang, task="transcribe")
+    model = WhisperForConditionalGeneration.from_pretrained(path).to("cuda")
+
+    return processor, model
+
+
 # preprocess
 def prepare_dataset(batch, feature_extractor, tokenizer):
     # load resampled audio data
@@ -43,33 +61,41 @@ def prepare_dataset(batch, feature_extractor, tokenizer):
     batch["input_features"] = feature_extractor(audio["array"], sampling_rate=audio["sampling_rate"]).input_features[0]
 
     # encode target text to label ids
-    batch["labels"] = tokenizer(batch["raw_transcription"]).input_ids # make sure to encode the raw_transcription column as ground truth
+    batch["labels"] = tokenizer(
+        batch["raw_transcription"]).input_ids  # make sure to encode the raw_transcription column as ground truth
 
     # save normalized transcription for reference
     batch["transcription"] = batch["transcription"]
     return batch
 
+
 # normalizer
-def compute_metrics(pred, tokenizer):
-    pred_ids = pred.predictions # ids from model.generate
-    label_ids = pred.label_ids
 
-    # replace -100 with the pad_token_id
-    label_ids[label_ids == -100] = tokenizer.pad_token_id
+def metrics(lang):
+    """
+    define metrics according to languages
+    """
+    def compute_metrics(pred, tokenizer):
+        pred_ids = pred.predictions  # ids from model.generate
+        label_ids = pred.label_ids
 
-    # we do not want to group tokens when computing the metrics
-    pred_str = tokenizer.batch_decode(pred_ids, skip_special_tokens=True)
-    label_str = tokenizer.batch_decode(label_ids, skip_special_tokens=True)
+        # replace -100 with the pad_token_id
+        label_ids[label_ids == -100] = tokenizer.pad_token_id
 
-    # normalizer
-    # pred_str = custom_normalizer(pred_str, "zh")
-    pred_str = [custom_normalizer(str(input_str), "zh") for input_str in pred_str]
-    label_str = [custom_normalizer(str(input_str), "zh") for input_str in label_str]
+        # we do not want to group tokens when computing the metrics
+        pred_str = tokenizer.batch_decode(pred_ids, skip_special_tokens=True)
+        label_str = tokenizer.batch_decode(label_ids, skip_special_tokens=True)
 
-    wer = 100 * metric.compute(predictions=pred_str, references=label_str)
-    print(pred_str[:5], label_str[0:5])
-    return {"wer": wer}
+        # normalizer
+        # pred_str = custom_normalizer(pred_str, "zh")
+        pred_str = [custom_normalizer(str(input_str), lang) for input_str in pred_str]
+        label_str = [custom_normalizer(str(input_str), lang) for input_str in label_str]
 
+        wer = 100 * metric.compute(predictions=pred_str, references=label_str)
+        print(pred_str[:5], label_str[:5])
+        return {"wer": wer}
+
+    return compute_metrics
 
 def custom_normalizer(text, lang):
     """
