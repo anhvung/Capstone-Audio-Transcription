@@ -11,6 +11,7 @@ from whisper.normalizers import EnglishTextNormalizer
 from transformers import WhisperForConditionalGeneration
 
 metric = evaluate.load("wer")
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 # data collator
 @dataclass
@@ -47,7 +48,7 @@ def load_whisper(path: str, lang: str):
     load and return wav2vec tokenizer and model from huggingface
     """
     processor = WhisperProcessor.from_pretrained(path, language=lang, task="transcribe")
-    model = WhisperForConditionalGeneration.from_pretrained(path).to("cuda")
+    model = WhisperForConditionalGeneration.from_pretrained(path).to(device)
 
     return processor, model
 
@@ -71,11 +72,11 @@ def prepare_dataset(batch, feature_extractor, tokenizer):
 
 # normalizer
 
-def metrics(lang):
+def metrics(lang, tokenizer):
     """
     define metrics according to languages
     """
-    def compute_metrics(pred, tokenizer):
+    def compute_metrics(pred):
         pred_ids = pred.predictions  # ids from model.generate
         label_ids = pred.label_ids
 
@@ -88,12 +89,14 @@ def metrics(lang):
 
         # normalizer
         # pred_str = custom_normalizer(pred_str, "zh")
-        pred_str = [custom_normalizer(str(input_str), lang) for input_str in pred_str]
-        label_str = [custom_normalizer(str(input_str), lang) for input_str in label_str]
+        pred_str_norm = [custom_normalizer(str(input_str), lang) for input_str in pred_str]
+        label_str_norm = [custom_normalizer(str(input_str), lang) for input_str in label_str]
 
-        wer = 100 * metric.compute(predictions=pred_str, references=label_str)
+        wer_raw = 100 * metric.compute(predictions=pred_str, references=label_str)
+        wer = 100 * metric.compute(predictions=pred_str_norm, references=label_str_norm)
+
         print(pred_str[:5], label_str[:5])
-        return {"wer": wer}
+        return {"wer": wer_raw, "wer_norm": wer}
 
     return compute_metrics
 
