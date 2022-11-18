@@ -10,10 +10,11 @@ from transformers import WhisperProcessor
 from whisper.normalizers import EnglishTextNormalizer
 from transformers import WhisperForConditionalGeneration
 
+
 metric = evaluate.load("wer")
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-# data collator
+
 @dataclass
 class DataCollatorSpeechSeq2SeqWithPadding:
     processor: Any
@@ -42,7 +43,6 @@ class DataCollatorSpeechSeq2SeqWithPadding:
         return batch
 
 
-# Model loader
 def load_whisper(path: str, lang: str):
     """
     load and return wav2vec tokenizer and model from huggingface
@@ -53,7 +53,6 @@ def load_whisper(path: str, lang: str):
     return processor, model
 
 
-# preprocess
 def prepare_dataset(batch, feature_extractor, tokenizer):
     # load resampled audio data
     audio = batch["audio"]
@@ -70,7 +69,24 @@ def prepare_dataset(batch, feature_extractor, tokenizer):
     return batch
 
 
-# normalizer
+def map_to_pred(batch, processor, model, lang):
+    sampling_rate = batch.features["audio"].sampling_rate
+    input_features = processor(batch["audio"][0]["array"], sampling_rate=sampling_rate, return_tensors="pt").input_features
+    generated_ids = model.generate(inputs=input_features.to("cuda"))
+    transcription = processor.batch_decode(generated_ids, skip_special_tokens=True,
+                                           # normalize=True
+                                           )
+    batch["logits"] = generated_ids.cpu().detach().numpy()
+    batch['raw_prediction'] = [transcription[0]]
+    batch['prediction'] = [custom_normalizer(transcription[0], lang)]
+    
+    # batch['prediction'] = [transcription[0]]
+    # batch['ground_truth'] = processor.tokenizer._normalize(batch['transcription'][0])
+    # batch['ground_truth'] = [normalizer(batch['transcription'][0])]
+    # batch['ground_truth'] = batch['transcription']
+    # print(batch)
+    return batch
+
 
 def metrics(lang, tokenizer):
     """
@@ -99,6 +115,7 @@ def metrics(lang, tokenizer):
         return {"wer": wer_raw, "wer_norm": wer}
 
     return compute_metrics
+
 
 def custom_normalizer(text, lang):
     """
