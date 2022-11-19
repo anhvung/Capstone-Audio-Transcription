@@ -57,7 +57,7 @@ def load_whisper(path: str):
     load and return wav2vec tokenizer and model from huggingface
     """
     processor = WhisperProcessor.from_pretrained(path)
-    model = WhisperForConditionalGeneration.from_pretrained(path).to("cuda")
+    model = WhisperForConditionalGeneration.from_pretrained(path).to(device)
 
     return processor, model
 
@@ -70,7 +70,7 @@ def map_to_pred(batch, model, processor):
     sampling_rate = batch.features["audio"].sampling_rate
     input_features = processor(batch["audio"]["array"], sampling_rate=sampling_rate, return_tensors="pt").input_features
     # generate logits and decode directly
-    generated_ids = model.generate(inputs=input_features.to("cuda"))
+    generated_ids = model.generate(inputs=input_features.to(device))
     transcription = processor.batch_decode(generated_ids, skip_special_tokens=True)
     # save logits and transcription
     batch["logits"] = generated_ids.cpu().detach().numpy()
@@ -91,7 +91,7 @@ def map_to_pred_ml(batch, model, processor, lang):
     # specify language of audio sample_rate
     model.config.forced_decoder_ids = processor.get_decoder_prompt_ids(language = lang, task = "transcribe")
     # generate logits and decode directly
-    generated_ids = model.generate(inputs=input_features.to("cuda"))
+    generated_ids = model.generate(inputs=input_features.to(device))
     transcription = processor.batch_decode(generated_ids, skip_special_tokens=True, normalize=True) # keep built-in normalizer in-case
     # save logits and transcription
     batch["logits"] = generated_ids.cpu().detach().numpy()
