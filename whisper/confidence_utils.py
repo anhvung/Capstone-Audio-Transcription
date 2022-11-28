@@ -1,7 +1,9 @@
 # This script includes utils to extend the generation behavior of whisper so as to obtain confidence scores
 
+from jiwer import wer
 import math
 import numpy as np
+import os
 import unicodedata
 import re
 import torch
@@ -12,6 +14,11 @@ from transformers.tokenization_utils_base import to_py_obj
 import types
 from typing import Callable, Iterable, List, Optional, Tuple, Union
 from whisper.normalizers import EnglishTextNormalizer
+
+# set paths for confidence related files
+predictions_confidence_path = os.path.join(os.getcwd(), 'predictions_confidence')
+# create folders if they do not already exist
+if not os.path.exists(predictions_confidence_path): os.makedirs(predictions_confidence_path)
 
 # set device
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -1194,7 +1201,8 @@ def _decode(
     if normalize:
         raise NotImplementedError
     else:
-        return text, current_sub_text, probs # current_sub_text is list of final string tokens
+        # current_sub_text is list of final string tokens
+        return text, current_sub_text, probs
 
 
 def convert_ids_to_tokens(
@@ -1234,6 +1242,8 @@ def convert_ids_to_tokens(
     return tokens, filtered_probs
 
 # Copied from transformers.models.gpt2.tokenization_gpt2.GPT2Tokenizer.convert_tokens_to_string with GPT2 -> Whisper
+
+
 def convert_tokens_to_string(self, tokens):
     """Converts a sequence of tokens (string) in a single string."""
     text = "".join(tokens)
@@ -1249,14 +1259,19 @@ def load_whisper_with_confidence_scores(path: str, lang: str):
     """
     processor = WhisperProcessor.from_pretrained(
         path, language=lang, task="transcribe")
-    
+
     # modify relevant methods to retreive probs for unskipped tokens
-    processor.batch_decode = types.MethodType(batch_decode_processor, processor)
-    processor.tokenizer.batch_decode = types.MethodType(batch_decode_tokenizer, processor.tokenizer)
+    processor.batch_decode = types.MethodType(
+        batch_decode_processor, processor)
+    processor.tokenizer.batch_decode = types.MethodType(
+        batch_decode_tokenizer, processor.tokenizer)
     processor.tokenizer.decode = types.MethodType(decode, processor.tokenizer)
-    processor.tokenizer._decode = types.MethodType(_decode, processor.tokenizer)
-    processor.tokenizer.convert_ids_to_tokens = types.MethodType(convert_ids_to_tokens, processor.tokenizer)
-    processor.tokenizer.convert_tokens_to_string = types.MethodType(convert_tokens_to_string, processor.tokenizer)
+    processor.tokenizer._decode = types.MethodType(
+        _decode, processor.tokenizer)
+    processor.tokenizer.convert_ids_to_tokens = types.MethodType(
+        convert_ids_to_tokens, processor.tokenizer)
+    processor.tokenizer.convert_tokens_to_string = types.MethodType(
+        convert_tokens_to_string, processor.tokenizer)
 
     model = WhisperWithConfidenceScores.from_pretrained(path).to(device)
 
@@ -1292,16 +1307,54 @@ def custom_normalizer(text, lang):
 
 
 def map_to_pred_and_confidence_scores(batch, processor, model, lang):
+    # read soundfile
     sampling_rate = batch.features["audio"].sampling_rate
+    # recover input features
     input_features = processor(
         batch["audio"][0]["array"], sampling_rate=sampling_rate, return_tensors="pt").input_features
+    # specify language of audio sample_rate
+    model.config.forced_decoder_ids = processor.get_decoder_prompt_ids(
+        language=lang, task="transcribe")
+    # generate logits and decode directly
     generated_ids, token_probs = model.generate_with_confidence_scores(
         inputs=input_features.to(device))
-    transcription_with_probs = processor.batch_decode(generated_ids, token_probs, skip_special_tokens=True,
-                                                      # normalize=True
-                                                      )
-    batch['string_pred'] = [transcription_with_probs[0][0]]
-    #batch['string_pred'] = [custom_normalizer(transcription_with_probs[0][0], lang)]
+    transcription_with_probs = processor.batch_decode(
+        generated_ids, token_probs, skip_special_tokens=True)
+    batch['string_pred'] = [custom_normalizer(
+        transcription_with_probs[0][0], lang)]
     batch['tokens_pred'] = [transcription_with_probs[0][1]]
     batch['probs_tokens_pred'] = [transcription_with_probs[0][2]]
+    batch['ground_truth'] = [processor.tokenizer._normalize(unicodedata.normalize("NFKC", batch['transcription'][0]))]
+    batch['wer'] = [wer(batch['string_pred'][0], batch['ground_truth'][0])]
+
     return batch
+
+
+def html_display_confidence(prediction_dataset, rows_ids):
+    """
+    Compute html string with confidence color per token, ground truth and wer
+    """
+
+    final_text = ""
+
+    def cstr(s, color='black'):
+        return "<text style=color:{}>{}</text>".format(color, s)
+
+    def map_float_rgb(f, m, M):
+        rgb = 'rgb({},{},0)'.format(int(255 * (1 - ((f - m) / (M - m)))), int(255 * (f - m) / (M - m)))
+        return rgb
+
+    for row_index in rows_ids:
+        tokens = prediction_dataset[row_index]['tokens_pred']
+        probs_tokens = prediction_dataset[row_index]['probs_tokens_pred']
+
+
+        min_prob = min(probs_tokens)
+        max_prob = max(probs_tokens)
+
+
+        final_text += "prediction &nbsp  &nbsp :  " + "".join([cstr(s=tokens[idx].replace('Ġ',' '), color=map_float_rgb(probs_tokens[idx], min_prob, max_prob)) for idx in range(len(tokens))]) + "<br>"
+        final_text += "ground truth : " + prediction_dataset[row_index]['raw_transcription'] + "<br>"
+        final_text += "WER" + 7 * " &nbsp" + ": " + str(round(100 * prediction_dataset[row_index]['wer'], 1)) + "%<br><br>"
+
+    return final_text
