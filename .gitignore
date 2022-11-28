@@ -6,3 +6,4 @@ __pycache__/
 **/datasets
 **/predictions
 /whisper/.ipynb_checkpoints/
+**/predictions_confidence
