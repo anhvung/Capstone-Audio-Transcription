@@ -956,7 +956,7 @@ class WhisperWithConfidenceScores(WhisperForConditionalGeneration):
         )
 
         # init tokens probs to NaNs for all padding tokens already in input_ids
-        tokens_probs = torch.tensor([math.nan * input_ids.shape[0]])
+        tokens_probs = torch.tensor([math.nan * input_ids.shape[0]]).to(device)
 
         # init attention / hidden states / scores tuples
         scores = () if (return_dict_in_generate and output_scores) else None
