@@ -45,7 +45,7 @@ def map_to_pred(batch, model, processor):
     predicts transcription
     """
     #tokenize
-    input_values = processor(batch["audio"]["array"], return_tensors="pt").input_values
+    input_values = processor(batch["audio"]["array"], return_tensors="pt", sampling_rate=16000).input_values
     #take logits
     with torch.no_grad(): logits = model(input_values.to(device)).logits
     #take argmax (find most probable word id)
