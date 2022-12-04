@@ -75,7 +75,7 @@ def predict_with_confidence_wav2vec(batch, model, processor):
     #tokenize
     input_values = processor(batch["audio"]["array"], return_tensors="pt", sampling_rate=16000).input_values
     #take logits
-    with torch.no_grad(): logits = model(input_values.to(device)).logits
+    with torch.no_grad(): logits = model(input_values.to(device)).logits.detach().cpu()
     #take argmax (find most probable word id)
     predicted_ids = torch.argmax(logits, dim=-1)
     #compute output
