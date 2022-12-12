@@ -55,7 +55,7 @@ def load_whisper(path: str):
     load and return wav2vec tokenizer and model from huggingface
     """
     processor = WhisperProcessor.from_pretrained(path)
-    model = WhisperForConditionalGeneration.from_pretrained(path).to("cuda")
+    model = WhisperForConditionalGeneration.from_pretrained(path).to(device)
 
     return processor, model
 
@@ -68,7 +68,7 @@ def map_to_pred(batch, model, processor):
     sampling_rate = batch.features["audio"].sampling_rate
     input_features = processor(batch["audio"]["array"], sampling_rate=sampling_rate, return_tensors="pt").input_features
     # Generate logits and decode directly
-    generated_ids = model.generate(inputs=input_features.to("cuda"))
+    generated_ids = model.generate(inputs=input_features.to(device))
     transcription = processor.batch_decode(generated_ids, skip_special_tokens=True)
     # save logits and transcription
     batch["logits"] = generated_ids.cpu().detach().numpy()
