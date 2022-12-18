@@ -85,7 +85,10 @@ Further to improve the accuracy, we will experiment (training/finetuning) with a
 │           whisper_intro-checkpoint.ipynb
 │
 └───whisper_finetune
+        README.md
+        requirements.txt
         utils.py
+        whisper_finetune_demo.ipynb
         whisper_finetune_eval.ipynb
         whisper_finetune_multilingual.ipynb
 ```
