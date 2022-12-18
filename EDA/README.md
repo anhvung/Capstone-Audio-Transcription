@@ -1,6 +1,9 @@
 # EDA
 
+- **audio_EDA.py**: exploratory data analysis on Librispeech clean data: waveforms, fourier transforms, spectrograms, etc.
+
 **Directory tree**
 ```
- capstone_EDA.ipynb
+ README.md
+ audio_EDA.ipynb
 ```
