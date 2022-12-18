@@ -40,6 +40,7 @@ The capstone project aims to test and improve the performance of open-source ASR
 │
 ├───EDA
 │       audio_EDA.ipynb
+        phenome_EDA.ipynb
 │
 ├───preprocessing
 │       audio_preprocess.py
