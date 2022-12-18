@@ -39,7 +39,7 @@ Further to improve the accuracy, we will experiment (training/finetuning) with a
 │       README.md
 │
 ├───EDA
-│       capstone_EDA.ipynb
+│       audio_EDA.ipynb
 │
 ├───preprocessing
 │       audio_preprocess.py
