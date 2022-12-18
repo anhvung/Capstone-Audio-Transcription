@@ -16,8 +16,8 @@ Emails  &lt;UNI&gt; @ columbia.edu
 
 Exploration of an open source-based ASR (Automatic Speech Recognition) solution that enables custom training for Acoustic as well Language model. The solution will leverage publicly available pre-trained acoustic model that can be fine-tuned with small amount of domain specific data. 
 
-We will start to explore Meta AI’s wav2vec 2.0 Framework for acoustic model.
-Further to improve the accuracy, we will experiment (training/finetuning) with a language model based on n-gram with KenLM or Transformer architecture. Once the models are trained, evaluate the models using KPI Word-Error-Rate (WER) by decoding audio data with acoustic in combination with language model.
+The capstone project aims to test and improve the performance of open-source ASR (Automatic Speech Recognition) models: Facebook AI’s wav2vec 2.0, wav2vec 2.0 with a 4-gram language model, and OpenAI’s Whisper. We obtain model performance baselines, measured by word error rate (WER), by transcribing audio data from the Librispeech corpus, and then test the models’ robustness on noisy and downsampled versions of the data. We also perform tests to obtain transcription accuracy on English audio recorded by speakers with different accents and also on recordings in different languages (using wav2vec 2.0 XLSR). We build upon these models by finetuning them on audio data from the Fleurs dataset. The resulting models from our custom finetuning pipelines significantly improve WER performance over their pre-trained counterparts: finetuned wav2vec 2.0 XLSR shows an average of 44.43% (at best, 74.2%) relative reduction in WER and fine-tuned Whisper achieves an average of 36.28% (at best, 66.6%) reduction in WER compared to their base models.
+
 
 **Directory tree**
 ```
@@ -85,7 +85,10 @@ Further to improve the accuracy, we will experiment (training/finetuning) with a
 │           whisper_intro-checkpoint.ipynb
 │
 └───whisper_finetune
+        README.md
+        requirements.txt
         utils.py
+        whisper_finetune_demo.ipynb
         whisper_finetune_eval.ipynb
         whisper_finetune_multilingual.ipynb
 ```
